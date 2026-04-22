@@ -1,23 +1,55 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-function error {
-  echo -e "\\e[91m$1\\e[39m"
+set -e
+
+error() {
+  echo -e "\e[91m[ERROR]\e[39m $1"
   exit 1
 }
-function check_internet() {
-  printf "Checking if you are online..."
-  wget -q --spider http://github.com
-  if [ $? -eq 0 ]; then
-    echo "Online. Continuing."
-  else
-    error "Offline. Go connect to the internet then run the script again."
+
+info() {
+  echo -e "\e[96m[INFO]\e[39m $1"
+}
+
+check_root() {
+  if [ "$EUID" -ne 0 ]; then
+    error "Execute como root: use 'sudo' antes do comando."
   fi
 }
 
-check_internet
+check_internet() {
+  info "Checking internet connection..."
+  if wget -q --spider https://github.com; then
+    info "Online ✔"
+  else
+    error "Sem conexão com a internet."
+  fi
+}
 
-echo "Creating directories..."
-sudo mkdir -p /portainer/Files/AppData/Config/Caddy || error "Failed to create Caddy folder!"
-echo "Downloading caddy config files"
-sudo wget -O /portainer/Files/AppData/Config/Caddy/Caddyfile https://raw.githubusercontent.com/pi-hosted/pi-hosted/master/configs/Caddyfile || error "Failed to download Caddyfile file!"
-echo "Setup complete. You can now install Caddy using the App Template."
+create_dirs() {
+  info "Criando diretórios..."
+  mkdir -p /portainer/Files/AppData/Config/Caddy || error "Falha ao criar diretórios."
+}
+
+download_caddyfile() {
+  info "Baixando Caddyfile..."
+  wget -qO /portainer/Files/AppData/Config/Caddy/Caddyfile \
+    https://raw.githubusercontent.com/pi-hosted/pi-hosted/master/configs/Caddyfile \
+    || error "Falha ao baixar Caddyfile."
+
+  # validação simples pra evitar HTML acidental
+  if grep -q "<html" /portainer/Files/AppData/Config/Caddy/Caddyfile; then
+    error "Arquivo baixado parece ser HTML, não um Caddyfile válido."
+  fi
+}
+
+main() {
+  check_root
+  check_internet
+  create_dirs
+  download_caddyfile
+
+  info "Tudo pronto! 🎉"
+}
+
+main
