@@ -4,7 +4,6 @@ function error {
   echo -e "\\e[91m$1\\e[39m"
   exit 1
 }
-
 function check_internet() {
   printf "Checking if you are online..."
   wget -q --spider http://github.com
